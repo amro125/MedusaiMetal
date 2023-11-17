@@ -11,7 +11,7 @@ def strumbot(traj):
     for i in range(len(traj)):
         # run command
         start_time = time.time()
-        j_angles[5] = traj[i] + 52.4
+        j_angles[5] = traj[i] +  52.4# -1.8
         arms[0].set_servo_angle_j(angles=j_angles, is_radian=False)
         tts = time.time() - start_time
         sleep = 0.002 - tts
@@ -31,7 +31,7 @@ def setup():
         a.set_mode(0)
         a.set_state(0)
         angle = pos.copy()
-        angle[5] = 52.4
+        angle[5] =  52.4 #-1.8
         a.set_servo_angle(angle=angle, wait=False, speed=10, acceleration=0.25, is_radian=False)
 
 
@@ -79,15 +79,18 @@ if __name__ == '__main__':
     arm1 = XArmAPI('192.168.1.236')
     global arms
     arms = [arm1]
-    strumD = 15
-    speed = 0.125
+    strumD = 15 #30
+    speed = 0.15
     global pos
+
     IP0 = [-.25, 87.4, -2, 126.5, -strumD / 2, 51.7, -45]
     IP1 = [2.67, 86.1, 0, 127.1, -strumD / 2, 50.1, -45]
     IP2 = [1.3, 81.68, 0.0, 120, -strumD / 2, 54.2, -45]
     IP3 = [-1.4, 81, 0, 117.7, -strumD / 2, 50.5, -45]
 
-    pos = [4.7, -56.44, 4.7, 35.7, 0, -strumD / 2 + 52.4, -20.9]
+    pos = [4.7, -56.44, 4.7, 35.7, 0, -strumD / 2 + 52.4, -35.9] # DONT DELETE THIS IS FOR ARM 1 picking
+    # pos = [0, -55.7, -25.5, 32.4, 0, -strumD / 2 + -1.8, -20.9] #stupid drumming idea
+
     midpos = [1]
     pos2 = [39.5, 84.5, -40, 96.6, -strumD / 2, 49.3, -31.2]
 
@@ -112,10 +115,10 @@ if __name__ == '__main__':
     trajA = poseToPose(pos, pos2, 0.5)
 
     while True:
-        # input()
+        input()
         print("got!")
         direction = i % 2
         strumbot(both[direction])
         i += 1
 
-        input()
+        # time.sleep(0.25)
