@@ -178,7 +178,7 @@ if __name__ == '__main__':
     # IP0u[0] = IP0u[0] - (baseamp/(scaledbase*2))
     # strumto start traj is = [0, 7.7, 0, 111.72, 9, 11, -45]
 
-    arm1 = XArmAPI('192.168.1.236')
+    arm1 = XArmAPI('192.168.1.237')
 
     global arms
     arms = [arm1]

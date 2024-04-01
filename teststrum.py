@@ -4,6 +4,8 @@ import time
 import numpy as np
 import math
 from xarm.wrapper import XArmAPI
+from pythonosc import udp_client, dispatcher, osc_server
+from pythonosc import osc_message_builder
 
 
 def strumbot(traj):
@@ -11,7 +13,7 @@ def strumbot(traj):
     for i in range(len(traj)):
         # run command
         start_time = time.time()
-        j_angles[5] = traj[i] +  52.4# -1.8
+        j_angles[5] = traj[i] +  inputPos[5]# -1.8
         arms[0].set_servo_angle_j(angles=j_angles, is_radian=False)
         tts = time.time() - start_time
         sleep = 0.002 - tts
@@ -31,7 +33,7 @@ def setup():
         a.set_mode(0)
         a.set_state(0)
         angle = pos.copy()
-        angle[5] =  52.4 #-1.8
+        angle[5] =  pos[5] + strumD/2
         a.set_servo_angle(angle=angle, wait=False, speed=10, acceleration=0.25, is_radian=False)
 
 
@@ -76,23 +78,31 @@ def gotoPose(numarm, traj):
 
 if __name__ == '__main__':
     # global arm1
-    arm1 = XArmAPI('192.168.1.236')
+    arm1 = XArmAPI('192.168.1.244')
     global arms
+    global strumD
     arms = [arm1]
     strumD = 15 #30
     speed = 0.15
     global pos
+    UDP_IP_Rip = "192.168.2.8"
+    UDP_PORT_Rip = 5004
+    client_Rip = udp_client.UDPClient(UDP_IP_Rip, UDP_PORT_Rip)
 
-    IP0 = [-.25, 87.4, -2, 126.5, -strumD / 2, 51.7, -45]
-    IP1 = [2.67, 86.1, 0, 127.1, -strumD / 2, 50.1, -45]
-    IP2 = [1.3, 81.68, 0.0, 120, -strumD / 2, 54.2, -45]
-    IP3 = [-1.4, 81, 0, 117.7, -strumD / 2, 50.5, -45]
+    # IP0 = [-.25, 87.4, -2, 126.5, -strumD / 2, 51.7, -45]
+    # IP1 = [2.67, 86.1, 0, 127.1, -strumD / 2, 50.1, -45]
+    # IP2 = [1.3, 81.68, 0.0, 120, -strumD / 2, 54.2, -45]
+    # IP3 = [-1.4, 81, 0, 117.7, -strumD / 2, 50.5, -45]
+    global inputPos
+    inputPos = [-54.6, -52.8, -116.7, 101.1, 2.1, -4.5, -0.2]
 
-    pos = [4.7, -56.44, 4.7, 35.7, 0, -strumD / 2 + 52.4, -35.9] # DONT DELETE THIS IS FOR ARM 1 picking
+    pos = inputPos.copy()
+    pos[5] = inputPos[5] - strumD/2
+    # pos = [31.8, 66.2, -34.6, 131.4, -21.7, -strumD/2 + 91.5, -22.7] # DONT DELETE THIS IS FOR ARM 1 picking
     # pos = [0, -55.7, -25.5, 32.4, 0, -strumD / 2 + -1.8, -20.9] #stupid drumming idea
 
     midpos = [1]
-    pos2 = [39.5, 84.5, -40, 96.6, -strumD / 2, 49.3, -31.2]
+    # pos2 = [39.5, 84.5, -40, 96.6, -strumD / 2, 49.3, -31.2]
 
     # totalArms = len(arms)
 
@@ -112,11 +122,15 @@ if __name__ == '__main__':
     uptraj = fifth_poly(-strumD / 2, strumD / 2, speed)
     downtraj = fifth_poly(strumD / 2, -strumD / 2, speed)
     both = [uptraj, downtraj]
-    trajA = poseToPose(pos, pos2, 0.5)
+    # trajA = poseToPose(pos, pos2, 0.5)
 
     while True:
         input()
         print("got!")
+        msg = osc_message_builder.OscMessageBuilder(address="/strumC")
+        msg.add_arg(4)
+        msg = msg.build()
+        client_Rip.send(msg)
         direction = i % 2
         strumbot(both[direction])
         i += 1
