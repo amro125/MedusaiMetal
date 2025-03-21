@@ -13,13 +13,12 @@ tstep = 0.004  # Keep timing precise
 # Command queues
 pluck_queue = queue.Queue()
 follow_queue = queue.Queue()
-reward_queue = queue.Queue()
 
-# Snake movement parameters
+# Snake movement
 amps = [0, 5, 0, 15, 5, -30, 0]
 phases = [0, 0, 0, 0, 0.5, 0.3, 0]
 
-# Robot configurations
+# Robot configs
 pluck_robots = [
     ['192.168.1.236', [0, 40, 0, 117, 0, 44, 0]],
     ['192.168.1.234', [160, 26, 186, 103, 2, 24, -140]],
@@ -28,12 +27,13 @@ pluck_robots = [
 ]
 
 follow_robots = [
-    ['192.168.1.237', [5,-10,0,100,0,12,0]],
-    ['192.168.1.244', [-80,-30,-160,120,0,22,0]],
+    ['192.168.1.237', [5, -10, 0, 100, 0, 12, 0]],
+    ['192.168.1.244', [-80, -30, -160, 120, 0, 22, 0]],
     ['192.168.1.204', [0, 34, 0, 95, 0, -25, 0]]
 ]
 
-# Helper function for executing trajectories
+
+#  executing trajectories
 def runTraj(trajectory, xarms):
     for i in range(len(trajectory[0])):
         start = time.time()
@@ -45,7 +45,8 @@ def runTraj(trajectory, xarms):
             time.sleep(0.0001)
             t_elapse = time.time() - start
 
-# Functions for the follow functionality
+
+# follow robots
 def makefollowTraj(x, y):
     xlimit = [[120, 330], [330, 475], [330, 500]]
     j3 = [[-25, 67], [-170, -100], [-75, -15]]
@@ -62,20 +63,21 @@ def makefollowTraj(x, y):
         curpos = xarm.getAngle1()
         nextspot = curpos.copy()
         nextspot[2] = movej3
-        curtraj = xarm.Singlep2ptraj(curpos, nextspot, 1.5)  # Reduced from 2s to 1.5s for speed
+        curtraj = xarm.Singlep2ptraj(curpos, nextspot, 2)
         tomove.append(curtraj)
     return tomove
 
+
 def FollowUser():
     x, y, pluck = follow_queue.queue[-1]
-    
-    # Create and execute follow trajectory
+
+    # create follow trajectory
     tomove = makefollowTraj(x, y)
     runTraj(tomove, follow_xarms)
     follow_queue.queue.clear()
 
     start = time.time()
-    while time.time() - start < 1.5:  # Reduced from 2s to 1.5s for speed
+    while time.time() - start < 1.5:
         if not follow_queue.empty():
             client.send_message("/Movement", 0)
             x, y, pluck = follow_queue.queue[-1]
@@ -83,35 +85,29 @@ def FollowUser():
             runTraj(tomove, follow_xarms)
             start = time.time()
             follow_queue.queue.clear()
-        time.sleep(0.05)  # Reduced from 0.1s for faster responsiveness
+        time.sleep(0.1)
 
-    # Return to snake position
+        # Return to snake position
     tomove = []
     for xarm in follow_xarms:
         robottrajirst = xarm.snakebeat1(amps, 5, phases)
         curpos = xarm.getAngle1()
-        curtraj = xarm.Singlep2ptraj(curpos, robottrajirst[0], 1.5)  # Reduced from 2s to 1.5s for speed
+        curtraj = xarm.Singlep2ptraj(curpos, robottrajirst[0], 2)
         tomove.append(curtraj)
     runTraj(tomove, follow_xarms)
     follow_queue.queue.clear()
 
-# Main robot control functions
-def pluck_robomove():
-    while True:
-        # Check for reward dance command with highest priority
-        while reward_queue.qsize() < 1:
-            # Wait for follow_robomove to also detect the reward command
-            time.sleep(0.1)
 
-            
-        tomove = []
-        for xarm in pluck_xarms:
-            robottraj = xarm.snakebeat1(amps, 5, phases)
-            tomove.append(robottraj)
+# Main back robot
+def pluck_robomove():
+    tomove = []
+    for xarm in pluck_xarms:
+        robottraj = xarm.snakebeat1(amps, 5, phases)
+        tomove.append(robottraj)
+    while True:
+
 
         for i in range(len(tomove[0])):
-
-                
             if pluck_queue.qsize() > 0:
                 snakePluckTraj = []
                 for num, xarm in enumerate(pluck_xarms):
@@ -119,14 +115,21 @@ def pluck_robomove():
                     if num == 3:
                         curpos = xarm.getAngle1()
                         snakePluckTraj.append(xarm.Singlep2ptraj(curpos, [22, 30, -196, 93, -4.5, 44.5, -32.5], 2))
-                        snakePluckTraj[3] = np.concatenate((snakePluckTraj[3], xarm.Singlep2ptraj([22, 30, -196, 93, -4.5, 44.5, -32.5],
-                                                             [22, 64.3, -196, 44.8, -4.5, 45.2, 12.7], 2)), axis=0)
-                        snakePluckTraj[3] = np.concatenate((snakePluckTraj[3], xarm.Singlep2ptraj([22, 64.3, -196, 44.8, -4.5, 45.2, 12.7],
-                                                             [22, 64.3, -196, 44.8, -4.5, 58.6, 12.7], 1.5)), axis=0)
-                        snakePluckTraj[3] = np.concatenate((snakePluckTraj[3], xarm.Singlep2ptraj([22, 64.3, -196, 44.8, -4.5, 58.6, 12.7],
-                                                             [22, 64.3, -196, 51.6, -4.5, 45.2, 12.7], 1.5)), axis=0)
-                        snakePluckTraj[3] = np.concatenate((snakePluckTraj[3], xarm.Singlep2ptraj([22, 64.3, -196, 51.6, -4.5, 45.2, 12.7], 
-                                                             robottraj[0], 1.5)), axis=0)
+                        snakePluckTraj[3] = np.concatenate(
+                            (snakePluckTraj[3], xarm.Singlep2ptraj([22, 30, -196, 93, -4.5, 44.5, -32.5],
+                                                                   [22, 64.3, -196, 44.8, -4.5, 45.2, 12.7], 2)),
+                            axis=0)
+                        snakePluckTraj[3] = np.concatenate(
+                            (snakePluckTraj[3], xarm.Singlep2ptraj([22, 64.3, -196, 44.8, -4.5, 45.2, 12.7],
+                                                                   [22, 64.3, -196, 44.8, -4.5, 58.6, 12.7], 1.5)),
+                            axis=0)
+                        snakePluckTraj[3] = np.concatenate(
+                            (snakePluckTraj[3], xarm.Singlep2ptraj([22, 64.3, -196, 44.8, -4.5, 58.6, 12.7],
+                                                                   [22, 64.3, -196, 51.6, -4.5, 45.2, 12.7], 1.5)),
+                            axis=0)
+                        snakePluckTraj[3] = np.concatenate(
+                            (snakePluckTraj[3], xarm.Singlep2ptraj([22, 64.3, -196, 51.6, -4.5, 45.2, 12.7],
+                                                                   robottraj[0], 1.5)), axis=0)
                     else:
                         snakePluckTraj.append(tomove[num][i:])
                         remainingNum = len(snakePluckTraj[num])
@@ -146,152 +149,61 @@ def pluck_robomove():
                         pos = snakePluckTraj[num][j].copy()
                         xarm.movexArm(pos)
                     t_elapse = time.time() - start
-                    
-                    # Check for reward dance right before timing loop
-                    if reward_queue.qsize() > 0:
-                        break
-                        
                     while t_elapse < tstep:
                         time.sleep(0.0001)
                         t_elapse = time.time() - start
 
                 pluck_queue.queue.clear()
+                tomove = []
+                for xarm in pluck_xarms:
+                    robottraj = xarm.snakebeat1(amps, 5, phases)
+                    tomove.append(robottraj)
                 break
 
-            # Continue with snake movements if no pluck command
+            # Continue with snake movements
             start = time.time()
             for num, xarm in enumerate(pluck_xarms):
                 pos = tomove[num][i].copy()
                 xarm.movexArm(pos)
             t_elapse = time.time() - start
-            # Check for reward dance right before timing loop
-            if reward_queue.qsize() > 0:
-                break
             while t_elapse < tstep:
-                time.sleep(0.0001)
+                time.sleep(0.001)
                 t_elapse = time.time() - start
 
+
 def follow_robomove():
+    tomove = []
+    for xarm in follow_xarms:
+        robottraj = xarm.snakebeat1(amps, 5, phases)
+        tomove.append(robottraj)
     while True:
-        # Check for reward dance command with highest priority
-        if reward_queue.qsize() > 0:
-            # Execute reward dance for all robots
-            
-            continue
-            
-        tomove = []
-        for xarm in follow_xarms:
-            robottraj = xarm.snakebeat1(amps, 5, phases)
-            tomove.append(robottraj)
+
 
         for i in range(len(tomove[0])):
-            # Check for reward dance command during trajectory execution
-            if reward_queue.qsize() > 0:
-                break
-                
             start = time.time()
             for num, xarm in enumerate(follow_xarms):
                 pos = tomove[num][i].copy()
                 xarm.movexArm(pos)
             t_elapse = time.time() - start
-            
+
             if follow_queue.qsize() > 0:
                 client.send_message("/Movement", 0)
                 FollowUser()
+                tomove = []
+                for xarm in follow_xarms:
+                    robottraj = xarm.snakebeat1(amps, 5, phases)
+                    tomove.append(robottraj)
                 break
-            if reward_queue.qsize() > 0:
-                reward_dance()
+
+            if pluck_queue.qsize() > 0:
                 break
-                
+
             while t_elapse < tstep:
-                time.sleep(0.0001)
+                time.sleep(0.001)
                 t_elapse = time.time() - start
 
-# Function to perform reward dance
-def reward_dance():
-    print("Executing reward dance!")
-    
-    # Create trajectories for each robot to go to different positions
-    pluck_dance_traj = []
-    follow_dance_traj = []
-    
-    # Define different target positions for each robot
-    pluck_targets = [
-        [10, 45, 10, 120, 10, 50, 10],
-        [150, 30, 180, 110, 10, 30, -130],
-        [0, 10, 15, 140, 10, 35, -60],
-        [10, 25, -175, 95, 0, 30, 0]
-    ]
-    
-    follow_targets = [
-        [15, 0, 10, 110, 10, 20, 10],
-        [-70, -20, -150, 130, 10, 30, 10],
-        [10, 40, 10, 105, 10, -15, 10]
-    ]
-    
-    # Create trajectories for pluck robots
-    for i, xarm in enumerate(pluck_xarms):
-        curpos = xarm.getAngle1()
-        dance_traj = xarm.Singlep2ptraj(curpos, pluck_targets[i], 2)
-        
-        # Append snakebeat1 trajectory 4 times
-        snake_traj = xarm.snakebeat1(amps, 3, phases)
-        for _ in range(4):
-            dance_traj = np.concatenate((dance_traj, snake_traj), axis=0)
-            
-        # Add trajectory to return to initial position
-        initial_pos = xarm.snakebeat1(amps, 5, phases)[0]
-        return_traj = xarm.Singlep2ptraj(dance_traj[-1], initial_pos, 2)
-        dance_traj = np.concatenate((dance_traj, return_traj), axis=0)
-        
-        pluck_dance_traj.append(dance_traj)
-    
-    # Create trajectories for follow robots
-    for i, xarm in enumerate(follow_xarms):
-        curpos = xarm.getAngle1()
-        dance_traj = xarm.Singlep2ptraj(curpos, follow_targets[i], 2)
-        
-        # Append snakebeat1 trajectory 4 times
-        snake_traj = xarm.snakebeat1(amps, 3, phases)
-        for _ in range(4):
-            dance_traj = np.concatenate((dance_traj, snake_traj), axis=0)
-            
-        # Add trajectory to return to initial position
-        initial_pos = xarm.snakebeat1(amps, 5, phases)[0]
-        return_traj = xarm.Singlep2ptraj(dance_traj[-1], initial_pos, 2)
-        dance_traj = np.concatenate((dance_traj, return_traj), axis=0)
-        
-        follow_dance_traj.append(dance_traj)
-    
-    tlen = len(pluck_dance_traj[0])
-    
-    
-    for i in range(tlen):
-        start = time.time()
-        
-        # Move pluck robots
-        for j, xarm in enumerate(pluck_xarms):
-            # if i < len(pluck_dance_traj[j]):
-            pos = pluck_dance_traj[j][i].copy()
-            xarm.movexArm(pos)
-        
-        # Move follow robots
-        for j, xarm in enumerate(follow_xarms):
-            # if i < len(follow_dance_traj[j]):
-            pos = follow_dance_traj[j][i].copy()
-            xarm.movexArm(pos)
-        
-        t_elapse = time.time() - start
-        while t_elapse < tstep:
-            time.sleep(0.0001)
-            t_elapse = time.time() - start
-    
-    # Clear all queues after dance
-    pluck_queue.queue.clear()
-    follow_queue.queue.clear()
-    reward_queue.queue.clear()
 
-# Socket listener functions - Using non-blocking I/O for speed
+# Socket listener
 def listen_for_commands():
     while True:
         # Check for pluck commands
@@ -301,25 +213,21 @@ def listen_for_commands():
             pluck_queue.put(1)
         except BlockingIOError:
             pass
-            
+
         # Check for follow commands
         try:
             data, addr = sock_follow.recvfrom(1024)
             array = np.frombuffer(data, dtype=int)
             print("Follow command:", array[0:2], "Type:", array[2])
-            
-            # Check if first number is 5 (reward dance trigger)
-            if array[0] == 5:
-                print("Reward dance triggered!")
-                reward_queue.put(1)
-            else:
-                follow_queue.put(array)
+            follow_queue.put(array)
         except BlockingIOError:
             pass
-            
-        time.sleep(0.01)  # Small sleep to prevent CPU hogging
 
-# Initialize robot arrays
+        time.sleep(0.001)
+
+    # Initialize robot arrays
+
+
 pluck_xarms = []
 follow_xarms = []
 
@@ -333,14 +241,14 @@ UDP_IP_PLUCK = "192.168.1.1"
 UDP_PORT_PLUCK = 5006
 sock_pluck = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock_pluck.bind((UDP_IP_PLUCK, UDP_PORT_PLUCK))
-sock_pluck.setblocking(False)  # Non-blocking for speed
+sock_pluck.setblocking(False)
 
 # Socket for following command
 UDP_IP_FOLLOW = "127.0.0.1"
 UDP_PORT_FOLLOW = 5005
 sock_follow = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock_follow.bind((UDP_IP_FOLLOW, UDP_PORT_FOLLOW))
-sock_follow.setblocking(False)  # Non-blocking for speed
+sock_follow.setblocking(False)
 
 # Initialize all robots
 for robot in pluck_robots:
@@ -359,12 +267,14 @@ for xarm in follow_xarms:
     xarm.setupBot(IP[0])
 
 # Start the control and listener threads
-threading.Thread(target=pluck_robomove, daemon=True).start()
-threading.Thread(target=follow_robomove, daemon=True).start()
-threading.Thread(target=listen_for_commands, daemon=True).start()
+
+
 
 # Wait for robots to initialize
 input("Press enter when robots stop moving to start script")
+threading.Thread(target=pluck_robomove, daemon=True).start()
+threading.Thread(target=follow_robomove, daemon=True).start()
+threading.Thread(target=listen_for_commands, daemon=True).start()
 
 # Initialize the queues to start the movement
 pluck_queue.put(0)
@@ -373,6 +283,7 @@ follow_queue.put(np.array([0, 0, 0]))
 # Main loop - keep program running
 try:
     while True:
-        time.sleep(0.1)  # Minimal sleep to keep CPU usage low
+    # listen_for_commands()
+        time.sleep(0.5)
 except KeyboardInterrupt:
     print("Shutting down robot control")
