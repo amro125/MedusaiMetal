@@ -85,11 +85,12 @@ def FollowUser():
     tomove = []
     num = 0
     for xarm in xarms:
-        robottrajirst = xarm.snakebeat1(amps, 5, phases)
+        robottrajirst = xarm.snakebeat1(amps, 5, phases[num])
         curpos = xarm.getAngle1()
         #We need the first value
         curtraj= xarm.Singlep2ptraj(curpos, robottrajirst[0], 2)
         tomove.append(curtraj)
+        num +=1
     for i in range(len(tomove[0])):
         start = time.time()
         num = 0
@@ -131,7 +132,7 @@ def robomove():
         # todo: continously having abrupt movement makes the arms stay in position but doesn't trigger sound continuously
         for xarm in xarms:
             #Just do any slow snake movement
-            robottraj = xarm.snakebeat1(amps, 5, phases)
+            robottraj = xarm.snakebeat1(amps, 5, phases[num])
 
             num += 1
 
@@ -210,10 +211,10 @@ test = 130
 robots = [['192.168.1.237', [5,-10,0,100,0,12,0]], ['192.168.1.244', [-80,-30,-160,120,0,22,0]], ['192.168.1.204', [0, 34, 0, 95, 0, -25, 0]]] #
 xarms = []
 # robots = [['192.168.1.237', [5,-10,0,100,0,12,0]]]
-
+basephase = np.array([0, 0, 0, 0, 0.5, 0.3, 0])
 speed = 3
 amps = [0, 5, 0, 15, 5, -30, 0]
-phases = [0, 0, 0, 0, 0.5, 0.3, 0]
+phases = [basephase,basephase+0.25,basephase+0.5]
 # amps = [5, 0, 15, 0, 30, 0, 0]
 # phases = [0, 0, 0.5, 0, 0.3, 0, 0]
 #be
@@ -221,11 +222,12 @@ phases = [0, 0, 0, 0, 0.5, 0.3, 0]
 
 for robot in robots:
     xarms.append(medusaiutils.robotsUtils(robot[0], robot[1], sim=False))
-
+num = 0
 for xarm in xarms:
-    IP = xarm.snakebeat1(amps,3,phases)
+    IP = xarm.snakebeat1(amps,3,phases[num])
     print(IP[0])
     xarm.setupBot(IP[0])
+    num += 1
 threading.Thread(target=robomove, daemon=True).start()
 input("press enter when robots stop moving to start script")
 q.put(0,0)
